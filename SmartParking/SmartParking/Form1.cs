@@ -17,7 +17,8 @@ namespace SmartParking
         SqlConnection connection;
         int start;
         int finish;
-        
+        Stopwatch stopwatch = new Stopwatch();
+
         public Form1()
         {
             connection = new SqlConnection(@"Data Source = DESKTOP-1NBNSDK\SQLEXPRESS; Initial Catalog = SmartParking; Integrated Security = true");
@@ -59,12 +60,20 @@ namespace SmartParking
 
             PopulateGrids();
             this.start =index;
-            if (index == 100)
+            if (this.finish == 1000)
+            {
+                stopwatch.Stop();
+                string insertTime = "insert into [Execution Time] values (@time)";
+                SqlCommand cmdInsertTime = new SqlCommand(insertTime, connection);
+                cmdInsertTime.Parameters.Add("@time", SqlDbType.Int);
+                cmdInsertTime.Parameters["@time"].Value = stopwatch.ElapsedMilliseconds;
+                cmdInsertTime.ExecuteNonQuery();
                 System.Windows.Forms.Application.Exit();
+            }
+                
 
             this.finish = this.start + 9;
-            if (this.finish == 499)
-                this.Close();
+          
            
         }
 
@@ -76,6 +85,7 @@ namespace SmartParking
             timerCars.Start();
             timerRequests.Start();
             timerDelete.Start();
+            stopwatch.Start();
         }
 
         private void LoadParkingLots()

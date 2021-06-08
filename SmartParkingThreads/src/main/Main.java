@@ -7,6 +7,10 @@ import repositories.CarRepository;
 import repositories.ParkingRepository;
 import repositories.QueueRepository;
 
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.util.*;
@@ -21,6 +25,25 @@ public class Main {
     public static Lock mutex = new ReentrantLock();
     public static Lock mutex2 = new ReentrantLock();
     public static Boolean isExit = false;
+    public static MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+    public static ArrayList<Long> memory = new ArrayList<>();
+
+
+    static class recordMemory extends Thread {
+
+        @Override
+        public void run() {
+
+            while(!isExit) {
+                memory.add((long) (memoryMXBean.getHeapMemoryUsage().getUsed()/1000000.0));
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
 
     public static double distance(double x1, double y1, double x2, double y2) {
@@ -96,7 +119,7 @@ public class Main {
                         if (pl.getFreespots() > 0) {
                             queueRepository.save(new CarRecording(1, cid, pid));
                             pl.setFreespots(pl.getFreespots() - 1);
-                            parkingRepository.update(pl);
+                            parkingRepository.update(pl, pid);
                         } else
                             queueRepository.save(new CarRecording(0, cid, pid));
                     }
@@ -115,7 +138,7 @@ public class Main {
         @Override
         public void run() {
 
-            for(int i = 0; i < 200 && !isExit; i++)
+            for(int i = 0; i < 100 && !isExit; i++)
             {
                 try {
 
@@ -135,7 +158,7 @@ public class Main {
                                 break;
                             }
                         if( cid1 != -1 && pid != -1) {
-                            carRepository.delete(cid1);
+                            //carRepository.delete(cid1);
                             queueRepository.delete(pq1);
                             //System.out.println("S- a sters masina " + cid1 + " din "  + pid);
                             for(CarRecording pq: list)
@@ -150,8 +173,9 @@ public class Main {
                             }
                             else {
                                 ParkingLot p = parkingRepository.getById(pid);
+                                System.out.println(pid + " " + p.getY());
                                 p.setFreespots(p.getFreespots() + 1);
-                                parkingRepository.update(p);
+                                parkingRepository.update(p, pid);
                             }
 
                         }
@@ -172,8 +196,9 @@ public class Main {
 
             int id = 0;
 
-            for(int i = 0; i < 2000 && !isExit; i++) {
+            for(int i = 0; i < 100 && !isExit; i++) {
                 try {
+
                     for(int k = 0; k < 10; k++) {
                         ArrayList<Double> pos = getCarPlace();
                         boolean isE;
@@ -192,6 +217,7 @@ public class Main {
                     e.printStackTrace();
                 }
             }
+            isExit = true;
 
         }
     }
@@ -206,7 +232,7 @@ public class Main {
     static class Menu {
         private final Scanner keyboard = new Scanner(System.in);
         public void runMenu() {
-            while (true) {
+            while (!isExit) {
                 System.out.println("Choose one option:\n" +
                         "1. Show all the cars\n" +
                         "2. Show all the parking lots\n" +
@@ -271,7 +297,6 @@ public class Main {
         }
 
         private void getGenderRatio() {
-            long startTime = System.currentTimeMillis();
             System.out.println("Enter the id of the parking for which you want the ratio: ");
             int pid = keyboard.nextInt();
             int male = 0, female = 0;
@@ -283,7 +308,6 @@ public class Main {
                 }
 
             System.out.println("Number of men: " + male + " Number of women: " + female);
-            long endTime = System.currentTimeMillis();System.out.println("Execution time: " + (endTime - startTime) + " milliseconds");
         }
 
         public void getCars() {
@@ -307,17 +331,19 @@ public class Main {
     }
     public static void main(String[] args) throws Exception {
 
-
+        long startTime = System.currentTimeMillis();
 
         generateParkingLots();
 
         carGenerator carGenerator = new carGenerator();
         parkingRequestGenerator parkingRequestGenerator = new parkingRequestGenerator();
         deleteCarWorker deleteCarWorker = new deleteCarWorker();
+        recordMemory recordMemory = new recordMemory();
 
         parkingRequestGenerator.start();
         carGenerator.start();
         deleteCarWorker.start();
+        recordMemory.start();
 
         Menu menu = new Menu();
         menu.runMenu();
@@ -326,6 +352,19 @@ public class Main {
         parkingRequestGenerator.join();
         carGenerator.join();
         deleteCarWorker.join();
+        recordMemory.join();
+
+        long endTime = System.currentTimeMillis();
+        System.out.println("Execution time: " + (endTime - startTime) + " milliseconds");
+
+        try (PrintWriter b = new PrintWriter("files/MemoryUsage.txt")) {
+
+            memory.forEach(m -> b.println(m + " MB used"));
+
+        }
+        catch (IOException exception) {
+            throw new Exception(exception.getMessage());
+        }
 
 
 

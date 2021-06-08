@@ -32,11 +32,8 @@ public class ParkingRepository {
     }
 
     public ParkingLot getById(int id) {
-        for(ParkingLot p : parkingLots) {
-            if (p.getId() == id)
-                return p;
-        }
-        return null;
+        return parkingLots.get(id);
+
     }
     public ArrayList<ParkingLot> getParkingLots()
     {
@@ -49,8 +46,8 @@ public class ParkingRepository {
          return false;
     }
 
-    public void update(ParkingLot pl) throws Exception {
-        parkingLots.set(pl.getId(), pl);
+    public void update(ParkingLot pl, int pid) throws Exception {
+        parkingLots.set(pid, pl);
         writeToFile();
     }
 }

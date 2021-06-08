@@ -20,6 +20,7 @@ public class CarRepository {
 
         try (PrintWriter b = new PrintWriter(this.filename)) {
             getCars().forEach(e -> b.println(e.getId() + " " + e.getX() + " " + e.getY() + " " +e.getDriverGender() + " " + e.isElectrical()));
+
         }
         catch (IOException exception) {
             throw new Exception(exception.getMessage());
